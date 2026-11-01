@@ -1,0 +1,147 @@
+# LoRA training with MLX-LM (mlx_lm.lora).
+# Every option below maps onto an option supported by mlx-lm 0.32.x; nothing is left to
+# MLX-LM defaults, so a library upgrade cannot silently change the recipe.
+
+model:
+  repo_id: swiss-ai/Apertus-v1.1-1.5B-Instruct
+  # Commit the experiment is pinned to (resolved 2026-10-30).
+  revision: 9e9d01154446a645d30f04174cf1515a38058be7
+  # Apache-2.0; the model card also asks users to follow the Apertus Acceptable Use Policy.
+  license: apache-2.0
+  upstream: null
+
+profiles:
+  # The reference recipe: LoRA rank 8, scale 20, no dropout, on the attention and MLP
+  # projections of all 16 blocks (5,373,952 parameters); AdamW with MLX's settings
+  # (betas 0.9/0.999, eps 1e-8, weight decay 0.01, no bias correction); lr 1e-4 with 20
+  # warmup updates, then cosine_decay(1e-4, 1000, 1e-6); 1,000 updates of 16 lines; loss
+  # on the answer only; validation loss on all 850 validation lines every 500 updates.
+  # Without gradient checkpointing it does not fit an 8 GB machine (measured).
+  reference:
+    kind: full
+    data_dir: data/processed/mlx
+    adapter_path: artifacts/adapters/reference
+    fine_tune_type: lora
+    optimizer: adamw
+    weight_decay: 0.01
+    adam_beta1: 0.9
+    adam_beta2: 0.999
+    adam_eps: 1.0e-8
+    bias_correction: false
+    learning_rate: 1.0e-4
+    lr_schedule: cosine
+    warmup_steps: 20
+    decay_steps: 1000
+    end_learning_rate: 1.0e-6
+    iters: 1000
+    batch_size: 16
+    grad_accumulation_steps: 1
+    max_seq_length: 512
+    num_layers: 16           # all 16 blocks
+    lora:
+      rank: 8
+      scale: 20.0
+      dropout: 0.0
+      keys: [self_attn.q_proj, self_attn.k_proj, self_attn.v_proj, self_attn.o_proj,
+             mlp.up_proj, mlp.down_proj]
+    mask_prompt: true
+    grad_checkpoint: false
+    memory_limit_gb: null
+    cache_limit_gb: null
+    steps_per_report: 10
+    steps_per_eval: 500
+    val_batches: -1          # the whole validation file
+    save_every: 1000
+    seed: 0
+
+  # The same recipe for an 8 GB Mac: gradient checkpointing (recomputes activations
+  # instead of storing them) and bounded MLX memory; neither changes the updates.
+  # Measured on an M1 / 8 GB: batch 16 without checkpointing runs out of memory; with it
+  # the peak memory footprint is 5.8 GB. A full run with MLX's default memory settings then
+  # stopped with "Insufficient Memory" at iteration 12, right after the first pass over
+  # the 850 validation lines, and at iteration ~20 with only the buffer cache capped: MLX
+  # schedules work up to 1.5 x the GPU working set (8.2 GB), more than Metal gives the GPU
+  # (5.7 GB). With the memory limit at 5 GB and the cache at 0.5 GB, 40 iterations and two
+  # full validation passes completed with the same losses.
+  m1_air_8gb:
+    kind: full
+    data_dir: data/processed/mlx
+    adapter_path: artifacts/adapters/m1_air_8gb
+    fine_tune_type: lora
+    optimizer: adamw
+    weight_decay: 0.01
+    adam_beta1: 0.9
+    adam_beta2: 0.999
+    adam_eps: 1.0e-8
+    bias_correction: false
+    learning_rate: 1.0e-4
+    lr_schedule: cosine
+    warmup_steps: 20
+    decay_steps: 1000
+    end_learning_rate: 1.0e-6
+    iters: 1000
+    batch_size: 16
+    grad_accumulation_steps: 1
+    max_seq_length: 512
+    num_layers: 16
+    lora:
+      rank: 8
+      scale: 20.0
+      dropout: 0.0
+      keys: [self_attn.q_proj, self_attn.k_proj, self_attn.v_proj, self_attn.o_proj,
+             mlp.up_proj, mlp.down_proj]
+    mask_prompt: true
+    grad_checkpoint: true
+    memory_limit_gb: 5.0     # MLX memory limit and buffer-cache cap (see above)
+    cache_limit_gb: 0.5
+    steps_per_report: 10
+    steps_per_eval: 500
+    val_batches: -1
+    save_every: 100          # a checkpoint every 100 updates (the run takes hours)
+    seed: 0
+
+  # Bounded real-training check: 2 iterations of 16 on the smoke subset, as in the
+  # m1_air_8gb profile. Proves the pipeline end to end and measures memory; the adapter it
+  # writes is useless.
+  smoke:
+    kind: smoke
+    data_dir: data/smoke/mlx
+    adapter_path: artifacts/adapters/smoke
+    fine_tune_type: lora
+    optimizer: adamw
+    weight_decay: 0.01
+    adam_beta1: 0.9
+    adam_beta2: 0.999
+    adam_eps: 1.0e-8
+    bias_correction: false
+    learning_rate: 1.0e-4
+    lr_schedule: constant
+    warmup_steps: 0
+    decay_steps: 0
+    end_learning_rate: 0.0
+    iters: 2
+    batch_size: 16
+    grad_accumulation_steps: 1
+    max_seq_length: 512
+    num_layers: 16
+    lora:
+      rank: 8
+      scale: 20.0
+      dropout: 0.0
+      keys: [self_attn.q_proj, self_attn.k_proj, self_attn.v_proj, self_attn.o_proj,
+             mlp.up_proj, mlp.down_proj]
+    mask_prompt: true
+    grad_checkpoint: true
+    memory_limit_gb: 5.0
+    cache_limit_gb: 0.5
+    steps_per_report: 1
+    steps_per_eval: 2
+    val_batches: 1
+    save_every: 2
+    seed: 0
+
+safety:
+  smoke_max_iters: 5
+  smoke_max_seq_length: 512
+  warn_seq_length_8gb: 1024
+  min_free_disk_gb: 4

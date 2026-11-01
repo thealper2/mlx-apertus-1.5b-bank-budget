@@ -1,0 +1,42 @@
+# Data for the bank-statement budget categoriser. Every reported number depends on these
+# settings.
+
+dataset:
+  repo_id: DoDataThings/us-bank-transaction-categories-v2
+  revision: 3e8d052cb7b362fb1a04b6064d2331982553ea56
+  license: mit
+  # One CSV (description, category), ~3.5 MB.
+  file: transactions-synthetic.csv
+  expected_lines: 68000
+
+# Which lines go where (definition in src/bank_budget/data/split.py). Part of the
+# experiment definition.
+split:
+  holdout_share: 0.15            # per category, hold out shops until ~15% of its lines
+  holdout_max_group_share: 0.30  # never one shop group with more than 30% of them
+  holdout_seed: 0                # random.Random
+  test_per_category: 100
+  test_new_seed: 1               # DataFrame.sample(random_state=...)
+  test_known_seed: 2
+  valid_per_category: 50
+  valid_seed: 3
+  train_shuffle_seed: 4
+
+expected_unique_lines: 45692
+expected_rows:
+  train: 35639
+  valid: 850
+  test_new: 1700
+  test_known: 1700
+
+output:
+  dir: data/processed
+  mlx_dir: data/processed/mlx    # train.jsonl + valid.jsonl for mlx_lm lora
+
+smoke:
+  # Written elsewhere so the canonical data is never touched.
+  dir: data/smoke
+  mlx_dir: data/smoke/mlx
+  train_size: 32                 # two batches of 16
+  valid_size: 16
+  test_per_category: 2           # 34 lines per test

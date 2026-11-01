@@ -1,0 +1,22 @@
+# Hugging Face publication. Nothing is uploaded unless `make publish` /
+# `bank-budget publish --execute` is run deliberately.
+
+# Destination repository, "<user-or-org>/<name>". Must be set before publishing.
+repo_id: null
+private: true
+mode: adapter          # adapter-only upload (the only supported mode)
+adapter_path: artifacts/adapters/m1_air_8gb
+model_card_path: artifacts/exports/model_card/README.md
+staging_dir: artifacts/exports/hf_upload
+commit_message: Upload bank-statement budget categoriser LoRA adapter (MLX)
+# License you release the adapter under. Confirm it yourself: the base model is
+# apache-2.0 (with the Apertus Acceptable Use Policy) and the data mit.
+adapter_license: apache-2.0
+
+# Files copied into the upload folder. Anything else in the adapter folder
+# (intermediate checkpoints, logs) stays local.
+include:
+  - adapters.safetensors
+  - adapter_config.json
+  - run_manifest.json
+  - training_config.yaml

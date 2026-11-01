@@ -1,0 +1,21 @@
+# Evaluation on the two held-out tests (1,700 lines each) and on a month of made-up
+# statement lines.
+
+test_files:
+  test_new: data/processed/test_new.jsonl      # shops never seen in training
+  test_known: data/processed/test_known.jsonl  # new lines of shops seen in training
+smoke_test_files:
+  test_new: data/smoke/test_new.jsonl
+  test_known: data/smoke/test_known.jsonl
+statement_file: examples/statement.csv
+output_dir: reports/evaluation
+
+generation:
+  # Greedy decoding, the model's own chat template, the same system prompt for the base
+  # model and the adapter.
+  max_tokens: 8
+  warmup_generations: 3    # untimed generations before timing starts
+
+limits:
+  max_examples: null     # null = the whole test file
+  smoke_max_examples: 34

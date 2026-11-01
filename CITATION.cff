@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below, and cite the base model and the dataset it builds on."
+title: "bank-budget: US bank-statement lines to budget categories (Apertus 1.5B Instruct + LoRA) with Apple MLX"
+type: software
+version: 0.1.0
+license: MIT
+authors:
+  - name: "The bank-budget project authors"
+references:
+  - type: software
+    title: "Apertus-v1.1-1.5B-Instruct"
+    authors:
+      - name: "Swiss AI Initiative"
+    url: "https://huggingface.co/swiss-ai/Apertus-v1.1-1.5B-Instruct"
+    license: Apache-2.0
+  - type: dataset
+    title: "US bank transaction categories v2 (synthetic)"
+    authors:
+      - name: "DoDataThings"
+    url: "https://huggingface.co/datasets/DoDataThings/us-bank-transaction-categories-v2"
+    license: MIT
+  - type: software
+    title: "MLX LM"
+    authors:
+      - name: "Apple"
+    url: "https://github.com/ml-explore/mlx-lm"
